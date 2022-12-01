@@ -281,8 +281,8 @@
 
     <distributionManagement>
         <repository>
-            <id>stuart-maven-public</id>
-            <url>https://nexus.internal.stuart.com/repository/maven-public/</url>
+            <id>stuart-maven-releases</id>
+            <url>https://nexus.internal.stuart.com/repository/maven-releases/</url>
         </repository>
         <snapshotRepository>
             <id>stuart-maven-snapshots</id>
