@@ -45,6 +45,7 @@ public class GraphHopperMatrixTest {
 
     // map locations
     private static final String ANDORRA = DIR + "/andorra.osm.gz";
+    private static final String MONACO = DIR + "/monaco.osm.gz";
 
     // when creating GH instances make sure to use this as the GH location such that it will be cleaned between tests
     private static final String GH_LOCATION = "target/graphhopper-test-gh";
@@ -96,10 +97,20 @@ public class GraphHopperMatrixTest {
     @ParameterizedTest(name = "Andorra Matrix Test {index} => matrix {1}")
     @CsvFileSource(resources = "/com/graphhopper/routing/matrix/andorra_matrix.csv", delimiter = ';')
     public void testAndorraDistanceMatrixResultsConsistencyAgainstRoutePoint2Point(String country, String matrix) {
+        testDistanceMatrixResultsConsistency(matrix, ANDORRA);
+    }
+
+    @ParameterizedTest(name = "Montecarlo Matrix Test {index} => matrix {1}")
+    @CsvFileSource(resources = "/com/graphhopper/routing/matrix/monaco_matrix.csv", delimiter = ';')
+    public void testMonacoDistanceMatrixResultsConsistencyAgainstRoutePoint2Point(String country, String matrix) {
+        testDistanceMatrixResultsConsistency(matrix, MONACO);
+    }
+
+    private void testDistanceMatrixResultsConsistency(String matrix, String osmLocation) {
         final MatrixText matrixText = parseRawMatrix(matrix);
 
         Profile carProfile = new Profile("car");
-        carProfile.setTurnCosts(true);
+        carProfile.setTurnCosts(false);
         CHProfile chCarProfile = new CHProfile("car");
 
         List<Profile> profiles = new ArrayList<>();
@@ -113,14 +124,11 @@ public class GraphHopperMatrixTest {
         config.setCHProfiles(chProfiles);
 
 
-        GraphHopper hopper = new GraphHopper().
-                setGraphHopperLocation(GH_LOCATION).
-                setOSMFile(ANDORRA).
-                init(config)
-                .setOSMFile(ANDORRA)
-                .setGraphHopperLocation(GH_LOCATION);
-
-        hopper.importOrLoad();
+        GraphHopper hopper = new GraphHopper()
+                .setOSMFile(osmLocation)
+                .init(config)
+                .setGraphHopperLocation(GH_LOCATION)
+                .importOrLoad();
 
         List<GHPoint> origins = matrixText.getOrigins();
         List<GHPoint> destinations = matrixText.getDestinations();

@@ -29,18 +29,12 @@ import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.ev.Subnetwork;
 import com.graphhopper.routing.lm.LMRoutingAlgorithmFactory;
 import com.graphhopper.routing.lm.LandmarkStorage;
-import com.graphhopper.routing.matrix.DistanceMatrix;
-import com.graphhopper.routing.matrix.GHMatrixRequest;
-import com.graphhopper.routing.matrix.GHMatrixResponse;
-import com.graphhopper.routing.matrix.MatrixCalculator;
-import com.graphhopper.routing.matrix.solver.CHMatrixSolver;
-import com.graphhopper.routing.matrix.solver.MatrixSolver;
 import com.graphhopper.routing.querygraph.QueryGraph;
-import com.graphhopper.routing.querygraph.QueryRoutingCHGraph;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.BlockAreaWeighting;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.routing.weighting.custom.CustomProfile;
+import com.graphhopper.routing.weighting.custom.FindMinMax;
 import com.graphhopper.storage.BaseGraph;
 import com.graphhopper.storage.Graph;
 import com.graphhopper.storage.GraphEdgeIdFinder;
@@ -64,17 +58,19 @@ import static com.graphhopper.util.Parameters.Algorithms.ROUND_TRIP;
 import static com.graphhopper.util.Parameters.Routing.*;
 
 public class Router {
-    private final BaseGraph graph;
-    private final EncodingManager encodingManager;
-    private final LocationIndex locationIndex;
-    private final Map<String, Profile> profilesByName;
+    protected final BaseGraph graph;
+    protected final EncodingManager encodingManager;
+    protected final LocationIndex locationIndex;
+    protected final Map<String, Profile> profilesByName;
     private final PathDetailsBuilderFactory pathDetailsBuilderFactory;
     private final TranslationMap translationMap;
-    private final RouterConfig routerConfig;
+    protected final RouterConfig routerConfig;
     private final WeightingFactory weightingFactory;
+
     // todo: these should not be necessary anymore as soon as GraphHopperStorage (or something that replaces) it acts
     // like a 'graph database'
-    private final Map<String, RoutingCHGraph> chGraphs;
+    protected final Map<String, RoutingCHGraph> chGraphs;
+
     private final Map<String, LandmarkStorage> landmarks;
     private final boolean chEnabled;
     private final boolean lmEnabled;
@@ -140,43 +136,6 @@ public class Router {
         }
     }
 
-    public GHMatrixResponse matrix(GHMatrixRequest request) {
-
-        Profile profile = profilesByName.get(request.getProfile());
-        RoutingCHGraph chGraph = chGraphs.get(profile.getName());
-
-
-        MatrixSolver solver = createMatrixSolver(request);
-        solver.checkRequest();
-        solver.init();
-
-        GHMatrixResponse ghMtxRsp = new GHMatrixResponse();
-
-        DirectedEdgeFilter directedEdgeFilter = solver.createDirectedEdgeFilter();
-        // For the usage of the Matrix use case, we don't need neither pointHints, SnapPreventions or Headings.
-        List<Double> headings = new ArrayList<>();
-        List<String> pointHints = new ArrayList<>();
-        List<String> snapPreventions = new ArrayList<>();
-        List<Snap> origins = ViaRouting.lookupMatrix(encodingManager, request.getOrigins(), solver.createSnapFilter(), locationIndex,
-                snapPreventions, pointHints, directedEdgeFilter, headings);
-
-        List<Snap> destinations = ViaRouting.lookupMatrix(encodingManager, request.getDestinations(), solver.createSnapFilter(), locationIndex,
-                snapPreventions, pointHints, directedEdgeFilter, headings);
-
-        // (base) query graph used to resolve headings, curbsides etc. this is not necessarily the same thing as
-        // the (possibly implementation specific) query graph used by PathCalculator
-        List<Snap> allSnaps = new ArrayList<>(origins);
-        allSnaps.addAll(destinations);
-        QueryGraph queryGraph = QueryGraph.create(graph, allSnaps);
-
-
-        MatrixCalculator matrixCalculator = solver.createMatrixCalculator(queryGraph);
-        DistanceMatrix matrix = matrixCalculator.calcMatrix(origins, destinations);
-        ghMtxRsp.setMatrix(matrix);
-
-        return ghMtxRsp;
-    }
-
     private void checkNoLegacyParameters(GHRequest request) {
         if (request.getHints().has("vehicle"))
             throw new IllegalArgumentException("GHRequest may no longer contain a vehicle, use the profile parameter instead, see docs/core/profiles.md");
@@ -237,11 +196,6 @@ public class Router {
         } else {
             return new FlexSolver(request, profilesByName, routerConfig, encodingManager, weightingFactory, graph, locationIndex);
         }
-    }
-
-    protected MatrixSolver createMatrixSolver(GHMatrixRequest request) {
-        // TODO For now MatrixSolver is just implemented with CHMatrixSolver
-        return new CHMatrixSolver(request, profilesByName, routerConfig, encodingManager, chGraphs);
     }
 
     protected GHResponse routeRoundTrip(GHRequest request, FlexSolver solver) {
@@ -332,12 +286,12 @@ public class Router {
         double wayPointMaxDistance = request.getHints().getDouble(Parameters.Routing.WAY_POINT_MAX_DISTANCE, 1d);
         double elevationWayPointMaxDistance = request.getHints().getDouble(ELEVATION_WAY_POINT_MAX_DISTANCE, routerConfig.getElevationWayPointMaxDistance());
 
-        DouglasPeucker peucker = new DouglasPeucker().
+        RamerDouglasPeucker peucker = new RamerDouglasPeucker().
                 setMaxDistance(wayPointMaxDistance).
                 setElevationMaxDistance(elevationWayPointMaxDistance);
         PathMerger pathMerger = new PathMerger(graph, weighting).
                 setCalcPoints(calcPoints).
-                setDouglasPeucker(peucker).
+                setRamerDouglasPeucker(peucker).
                 setEnableInstructions(enableInstructions).
                 setPathDetailsBuilders(pathDetailsBuilderFactory, request.getPathDetails()).
                 setSimplifyResponse(routerConfig.isSimplifyResponse() && wayPointMaxDistance > 0);
@@ -610,6 +564,9 @@ public class Router {
                 throw new IllegalArgumentException("Cannot find LM preparation for the requested profile: '" + profile.getName() + "'" +
                         "\nYou can try disabling LM using " + Parameters.Landmark.DISABLE + "=true" +
                         "\navailable LM profiles: " + landmarks.keySet());
+            if (profile instanceof CustomProfile && request.getCustomModel() != null
+                    && !request.getHints().getBool("lm.disable", false))
+                FindMinMax.checkLMConstraints(((CustomProfile) profile).getCustomModel(), request.getCustomModel(), lookup);
             RoutingAlgorithmFactory routingAlgorithmFactory = new LMRoutingAlgorithmFactory(landmarkStorage).setDefaultActiveLandmarks(routerConfig.getActiveLandmarkCount());
             return new FlexiblePathCalculator(queryGraph, routingAlgorithmFactory, weighting, getAlgoOpts());
         }
