@@ -24,7 +24,7 @@ pipeline {
         JENKINS_GROUP_ID = "${sh(script: 'id -g', returnStdout: true).trim()}"
         JENKINS_DOCKER_GROUP_ID = "${sh(script: 'getent group docker | cut -d: -f3', returnStdout: true).trim()}"
         SLACK_NOTIFICATION_CHANNEL = "dsc_jenkins"
-        SLACK_ROUTE_PLANNER_NOTIFICATION_CHANNEL = "route-planner-notifications"
+        SLACK_ROUTE_PLANNER_NOTIFICATION_CHANNEL = "graphhopper-matrix-notifications"
     }
 
     stages {
