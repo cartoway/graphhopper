@@ -20,7 +20,7 @@ package com.graphhopper.routing;
 
 import com.carrotsearch.hppc.IntArrayList;
 
-public class MultiplePointsNotFoundException extends RuntimeException {
+class MultiplePointsNotFoundException extends RuntimeException {
 
     private final IntArrayList pointsNotFound;
 
@@ -28,7 +28,7 @@ public class MultiplePointsNotFoundException extends RuntimeException {
         this.pointsNotFound = pointsNotFound;
     }
 
-    public IntArrayList getPointsNotFound() {
+    IntArrayList getPointsNotFound() {
         return pointsNotFound;
     }
 }

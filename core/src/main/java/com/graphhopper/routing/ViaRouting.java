@@ -22,7 +22,6 @@ import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.ev.EnumEncodedValue;
 import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.ev.RoadEnvironment;
-import com.graphhopper.routing.matrix.MatrixSnapResult;
 import com.graphhopper.routing.querygraph.QueryGraph;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.storage.index.LocationIndex;
@@ -48,9 +47,13 @@ import static com.graphhopper.util.Parameters.Routing.CURBSIDE;
  */
 public class ViaRouting {
 
-    public static MatrixSnapResult lookupMatrix(boolean failFast, EncodedValueLookup lookup, List<GHPoint> points, EdgeFilter snapFilter,
-                                                LocationIndex locationIndex, List<String> snapPreventions, List<String> pointHints,
-                                                DirectedEdgeFilter directedSnapFilter, List<Double> headings) {
+
+    /**
+     * @throws MultiplePointsNotFoundException in case one or more points could not be resolved
+     */
+    public static List<Snap> lookupMatrix(EncodedValueLookup lookup, List<GHPoint> points, EdgeFilter snapFilter,
+                                    LocationIndex locationIndex, List<String> snapPreventions, List<String> pointHints,
+                                    DirectedEdgeFilter directedSnapFilter, List<Double> headings) {
         if (points.size() < 1)
             throw new IllegalArgumentException("At least 1 point have to be specified, but was:" + points.size());
 
@@ -81,15 +84,13 @@ public class ViaRouting {
             if (!snap.isValid())
                 pointsNotFound.add(placeIndex);
 
-            if (snap.isValid())
-                snaps.add(snap);
+            snaps.add(snap);
         }
 
-        if (!pointsNotFound.isEmpty() && failFast)
+        if (!pointsNotFound.isEmpty())
             throw new MultiplePointsNotFoundException(pointsNotFound);
 
-        return new MatrixSnapResult(snaps,pointsNotFound);
-
+        return snaps;
     }
 
     /**

@@ -18,7 +18,6 @@ public class GHMatrixRequest {
     private final List<GHPoint> origins = new ArrayList<>();
     private final List<GHPoint> destinations = new ArrayList<>();
     private final PMap hints = new PMap();
-    private boolean failFast = false;
 
     /**
      * One or more locations to use as the starting point for calculating travel distance and time.
@@ -68,13 +67,5 @@ public class GHMatrixRequest {
     public GHMatrixRequest putHint(String fieldName, Object value) {
         this.hints.putObject(fieldName, value);
         return this;
-    }
-
-    public boolean isFailFast() {
-        return failFast;
-    }
-
-    public void setFailFast(boolean failFast) {
-        this.failFast = failFast;
     }
 }
