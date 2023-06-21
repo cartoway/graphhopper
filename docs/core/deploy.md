@@ -11,18 +11,18 @@ Then you can embed these commands in a shell script and use this from e.g. [Dock
 For production usage you have a web service included where you can use [this configuration](https://raw.githubusercontent.com/graphhopper/graphhopper/master/config-example.yml)
 Increase the -Xmx/-Xms parameters of the command accordingly.
 
-You can reduce the memory requirements for the import step when you run the
-"import" command explicitly before the "server" command:
+You can reduce the memory requirements for the import step when you run the `import` command explicitly before the `server` command:
 
 ```
 java [options] -jar *.jar import config.yml
 java [options] -jar *.jar server config.yml # calls the import command implicitly, if not done before
 ```
 
-Try different garbage collectors (GCs) like ZGC or Shenandoah for serving the
-routing requests. The G1 is the default GC but the other two GCs are better suited for JVMs with bigger heaps (>32GB) and low pauses.
-You enable them with `-XX:+UseZGC` or `-XX:+UseShenandoahGC`. Please note that especially ZGC and G1 require quite a
-bit memory additionally to the heap and so sometimes speed can be increased when you lower the `Xmx` value.
+To further reduce memory usage for `import` try a special garbage collector (GC): `-XX:+UseParallelGC`.
+
+However after the import, for serving the routing requests GCs like ZGC or Shenandoah could be better than the default G1 as those are optimized for JVMs with bigger heaps (>32GB) and low pauses.
+They can be enabled with `-XX:+UseZGC` or `-XX:+UseShenandoahGC`. Please note that especially ZGC and G1 require quite a
+bit memory additionally to the heap and so sometimes overall speed could be increased when lowering the `Xmx` value.
 
 If you want to support none-CH requests you should consider enabling landmarks or limit requests to a
 certain distance via `routing.non_ch.max_waypoint_distance` (in meter, default is 1) or
@@ -31,15 +31,14 @@ Otherwise it might require lots of RAM per request! See [#734](https://github.co
 
 ### API Tokens
 
-By default, the GraphHopper UI uses [Omniscale](http://omniscale.com/) and/or [Thunderforest](http://thunderforest.com/) as layer service.
-Either you get a plan there, then set the API key in the options.js file, or you
-have to remove Omniscale from the [JavaScript file](https://github.com/graphhopper/graphhopper/blob/master/web/src/main/resources/com/graphhopper/maps/js/map.js).
+The GraphHopper Maps UI uses the [GraphHopper Directions API](https://docs.graphhopper.com/#tag/Geocoding-API) for geocoding.
+To be able to use the autocomplete feature of the point inputs you get your API Token at
+[graphhopper.com](https://www.graphhopper.com/) and set this in the config.js file, see
+web-bundle/src/main/resources/com/graphhopper/maps/config.js
 
-GraphHopper uses the [GraphHopper Directions API](https://docs.graphhopper.com/#tag/Geocoding-API) for geocoding.
-To be able to use the autocomplete feature of the point inputs you have to:
+The Maps UI also uses [Omniscale](http://omniscale.com/) and [Thunderforest](http://thunderforest.com/) as layer service.
+You can get a plan there too and set the API keys in the config.js file.
 
- * Get your API Token at: https://www.graphhopper.com/ and set this in the options.js
- * Don't forget the Attribution when using the free package
 
 ## Worldwide Setup
 
