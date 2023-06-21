@@ -141,13 +141,13 @@ public class CHPreparationGraph {
         DoubleArrayList turnCosts = new DoubleArrayList();
         // for each node we store the index of the first turn cost entry/triple in the list
         final int[] turnCostNodes = new int[graph.getNodes() + 1];
-        TurnCostStorage.TurnRelationIterator tcIter = turnCostStorage.getAllTurnRelations();
+        TurnCostStorage.Iterator tcIter = turnCostStorage.getAllTurnCosts();
         int lastNode = -1;
         while (tcIter.next()) {
             int viaNode = tcIter.getViaNode();
             if (viaNode < lastNode)
                 throw new IllegalStateException();
-            long edgePair = BitUtil.LITTLE.combineIntsToLong(tcIter.getFromEdge(), tcIter.getToEdge());
+            long edgePair = BitUtil.LITTLE.toLong(tcIter.getFromEdge(), tcIter.getToEdge());
             // note that as long as we only use OSM turn restrictions all the turn costs are infinite anyway
             double turnCost = tcIter.getCost(turnCostEnc);
             int index = turnCostEdgePairs.size();
