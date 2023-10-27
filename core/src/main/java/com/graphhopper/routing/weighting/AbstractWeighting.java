@@ -41,24 +41,7 @@ public abstract class AbstractWeighting implements Weighting {
     }
 
     @Override
-    public boolean edgeHasNoAccess(EdgeIteratorState edgeState, boolean reverse) {
-        return reverse ? !edgeState.getReverse(accessEnc) : !edgeState.get(accessEnc);
-    }
-
-    /**
-     * In most cases subclasses should only override this method to change the edge-weight. The turn cost handling
-     * should normally be changed by passing another {@link TurnCostProvider} implementation to the constructor instead.
-     */
-    public abstract double calcEdgeWeight(EdgeIteratorState edgeState, boolean reverse);
-
-    @Override
     public long calcEdgeMillis(EdgeIteratorState edgeState, boolean reverse) {
-        // special case for loop edges: since they do not have a meaningful direction we always need to read them in
-        // forward direction
-        if (edgeState.getBaseNode() == edgeState.getAdjNode()) {
-            reverse = false;
-        }
-
         if (reverse && !edgeState.getReverse(accessEnc) || !reverse && !edgeState.get(accessEnc))
             throw new IllegalStateException("Calculating time should not require to read speed from edge in wrong direction. " +
                     "(" + edgeState.getBaseNode() + " - " + edgeState.getAdjNode() + ") "
@@ -68,18 +51,10 @@ public abstract class AbstractWeighting implements Weighting {
         double speed = reverse ? edgeState.getReverse(speedEnc) : edgeState.get(speedEnc);
         if (Double.isInfinite(speed) || Double.isNaN(speed) || speed < 0)
             throw new IllegalStateException("Invalid speed stored in edge! " + speed);
+        if (speed == 0)
+            throw new IllegalStateException("Speed cannot be 0 for unblocked edge, use access properties to mark edge blocked! Should only occur for shortest path calculation. See #242.");
 
         return Math.round(edgeState.getDistance() / speed * 3.6 * 1000);
-    }
-
-    @Override
-    public double getSpeed(EdgeIteratorState edgeState, boolean reverse) {
-
-        if (edgeState.getBaseNode() == edgeState.getAdjNode()) {
-            reverse = false;
-        }
-
-        return reverse ? edgeState.getReverse(speedEnc) : edgeState.get(speedEnc);
     }
 
     @Override
@@ -110,7 +85,7 @@ public abstract class AbstractWeighting implements Weighting {
 
     @Override
     public String toString() {
-        return getName() + "|" + speedEnc.getName().split("$")[0];
+        return getName() + "|" + speedEnc.getName();
     }
 
 }
