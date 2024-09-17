@@ -10,7 +10,7 @@
     <parent>
         <groupId>com.stuart.platform.graphhopper</groupId>
         <artifactId>graphhopper-parent</artifactId>
-        <version>5.1.3-SNAPSHOT</version>
+        <version>5.1.3</version>
     </parent>
     <properties>
         <shade-phase>package</shade-phase>
