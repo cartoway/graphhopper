@@ -7,6 +7,7 @@ import com.graphhopper.routing.ViaRouting;
 import com.graphhopper.routing.WeightingFactory;
 import com.graphhopper.routing.lm.LandmarkStorage;
 import com.graphhopper.routing.matrix.solver.CHMatrixSolver;
+import com.graphhopper.routing.matrix.solver.DijkstraOneToManySolver;
 import com.graphhopper.routing.matrix.solver.MatrixSolver;
 import com.graphhopper.routing.querygraph.QueryGraph;
 import com.graphhopper.routing.util.DirectedEdgeFilter;
@@ -38,12 +39,7 @@ public class RouterMatrix extends Router {
         if (!request.getOriginCurbsides().isEmpty() && !request.getDestinationCurbsides().isEmpty())
             throw new IllegalArgumentException("Curbsides are not supported for Matrix");
 
-        if (request.getCustomModel() != null)
-            throw new IllegalArgumentException("CustomModel not supported for Matrix: " + request.getCustomModel().toString());
-
         Profile profile = profilesByName.get(request.getProfile());
-        RoutingCHGraph chGraph = chGraphs.get(profile.getName());
-
 
         MatrixSolver solver = createMatrixSolver(request);
         solver.checkRequest();
@@ -75,7 +71,10 @@ public class RouterMatrix extends Router {
     }
 
     protected MatrixSolver createMatrixSolver(GHMatrixRequest request) {
-        // TODO For now MatrixSolver is just implemented with CHMatrixSolver
-        return new CHMatrixSolver(request, profilesByName, routerConfig, encodingManager, chGraphs);
+        if  (request.getProfile() != null || !chGraphs.containsKey(request.getProfile())) {
+            return new DijkstraOneToManySolver(request, profilesByName, routerConfig, encodingManager, graph, weightingFactory);
+        } else {
+            return new CHMatrixSolver(request, profilesByName, routerConfig, encodingManager, chGraphs);
+        }
     }
 }
