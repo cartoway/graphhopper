@@ -7,6 +7,7 @@ import com.graphhopper.routing.ViaRouting;
 import com.graphhopper.routing.WeightingFactory;
 import com.graphhopper.routing.lm.LandmarkStorage;
 import com.graphhopper.routing.matrix.solver.CHMatrixSolver;
+import com.graphhopper.routing.matrix.solver.DijkstraOneToManySolver;
 import com.graphhopper.routing.matrix.solver.MatrixSolver;
 import com.graphhopper.routing.querygraph.QueryGraph;
 import com.graphhopper.routing.util.DirectedEdgeFilter;
@@ -29,21 +30,10 @@ public class RouterMatrix extends Router {
 
     public GHMatrixResponse matrix(GHMatrixRequest request) {
 
-        if (!request.getOriginPointHints().isEmpty() && !request.getDestinationPointHints().isEmpty())
-            throw new IllegalArgumentException("Point hints are not supported for Matrix");
-
-        if (!request.getSnapPreventions().isEmpty())
-            throw new IllegalArgumentException("SnapPreventions are not supported for Matrix " + request.getSnapPreventions().toString());
-
         if (!request.getOriginCurbsides().isEmpty() && !request.getDestinationCurbsides().isEmpty())
             throw new IllegalArgumentException("Curbsides are not supported for Matrix");
 
-        if (request.getCustomModel() != null)
-            throw new IllegalArgumentException("CustomModel not supported for Matrix: " + request.getCustomModel().toString());
-
         Profile profile = profilesByName.get(request.getProfile());
-        RoutingCHGraph chGraph = chGraphs.get(profile.getName());
-
 
         MatrixSolver solver = createMatrixSolver(request);
         solver.checkRequest();
@@ -54,13 +44,14 @@ public class RouterMatrix extends Router {
         DirectedEdgeFilter directedEdgeFilter = solver.createDirectedEdgeFilter();
         // For the usage of the Matrix use case, we don't need neither pointHints, SnapPreventions or Headings.
         List<Double> headings = new ArrayList<>();
-        List<String> pointHints = new ArrayList<>();
-        List<String> snapPreventions = new ArrayList<>();
+        List<String> originPointHints = request.getOriginPointHints();
+        List<String> destinationPointHints = request.getDestinationPointHints();
+        List<String> snapPreventions = request.getSnapPreventions();
 
         MatrixSnapResult originsResult = ViaRouting.lookupMatrix(request.isFailFast(), encodingManager, request.getOrigins(), solver.createSnapFilter(), locationIndex,
-                snapPreventions, pointHints, directedEdgeFilter, headings);
+                snapPreventions, originPointHints, directedEdgeFilter, headings);
         MatrixSnapResult destinationsResult = ViaRouting.lookupMatrix(request.isFailFast(), encodingManager, request.getDestinations(), solver.createSnapFilter(), locationIndex,
-                snapPreventions, pointHints, directedEdgeFilter, headings);
+                snapPreventions, destinationPointHints, directedEdgeFilter, headings);
 
         List<Snap> allCorrectSnaps = new ArrayList<>(originsResult.snaps);
         allCorrectSnaps.addAll(destinationsResult.snaps);
@@ -75,7 +66,10 @@ public class RouterMatrix extends Router {
     }
 
     protected MatrixSolver createMatrixSolver(GHMatrixRequest request) {
-        // TODO For now MatrixSolver is just implemented with CHMatrixSolver
-        return new CHMatrixSolver(request, profilesByName, routerConfig, encodingManager, chGraphs);
+        if  (request.getProfile() != null || !chGraphs.containsKey(request.getProfile()) || !request.getSnapPreventions().isEmpty() || !request.getOriginPointHints().isEmpty() || !request.getDestinationPointHints().isEmpty()) {
+            return new DijkstraOneToManySolver(request, profilesByName, routerConfig, encodingManager, graph, weightingFactory);
+        } else {
+            return new CHMatrixSolver(request, profilesByName, routerConfig, encodingManager, chGraphs);
+        }
     }
 }
